@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Book>
+    <Title>Data Science Book</Title>
+    <Author>Joel Grus</Author>
+    <PublicationYear>2014</PublicationYear>
+
+    <Topics>
+        <Topic class="data-science">data</Topic>
+        <Topic>science</Topic>
+        <Topic class="data-science">data science</Topic>
+    </Topics>
+</Book>
