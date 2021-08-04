@@ -27,16 +27,66 @@ def mean(array):
     return sum(array) / len(array)
 
 
-def variance(array, population=False):
-    array_mean = mean(array)
-    if population == False:
-        return sum([(xi - array_mean) ** 2 for xi in array]) / (len(array) - 1)
+def median(array):
+    length = len(array)
+    sorted_arr = sorted(array)
+    if length % 2 == 0:
+        return (sorted_arr[length // 2] + sorted_arr[length // 2 - 1]) / 2
     else:
-        return sum([(xi - array_mean) ** 2 for xi in array]) / len(array)
+        return sorted_arr[length // 2]
+
+
+def quantile(array, p):
+    """returns the pth-percentile value in x"""
+    p_index = int(p * len(array))
+    return sorted(array)[:p_index]
+
+
+def mode(array):
+    counts = Counter(array)
+    return counts.most_common(1)[0][0]
+
+
+def data_range(array):
+    return max(array) - min(array)
+
+
+def sum_of_squares(array):
+    return sum([xi ** 2 for xi in array])
+
+
+def de_mean(array):
+    mean_of_array = mean(array)
+    return [xi - mean_of_array for xi in array]
+
+
+def variance(array, population=False):
+    de_means = de_mean(array)
+    if population == False:
+        return sum_of_squares(de_means) / (len(array) - 1)
+    else:
+        return sum_of_squares(de_means) / len(array)
 
 
 def standard_deviation(array, population=False):
     return sqrt(variance(array, population))
+
+
+def interquarile_range(array):
+    return quantile(array, 0.75) - quantile(array, 0.25)
+
+
+def covariance(x, y, population=False):
+    n = 0
+    if population:
+        n = len(x)
+    else:
+        n = len(x) - 1
+    return dot_product(de_mean(x), de_mean(y)) / n
+
+
+def correlation(x, y, population=False):
+    return covariance(x, y) / (standard_deviation(x, population) * standard_deviation(y, population))
 
 
 def make_matrix(num_rows, num_cols, entry_fn):
