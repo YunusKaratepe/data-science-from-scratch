@@ -1,7 +1,7 @@
 # Author: Yunus Karatepe
 # This file includes some functions to use in the future. 
 # Basiclly this file is a library.
-from collections import defaultdict
+from collections import Counter
 from math import sqrt
 from functools import partial
 from numpy.lib.function_base import copy
@@ -262,9 +262,7 @@ def principal_component_analysis(x, num_components=3):
     return components
 
 class file_ops:
-    from collections import defaultdict
             
-
     def read_csv(file_path, sep=',', keys=None, as_array=False):
         """Keys must be given as ordered as in file,
         if keys=None then it assumes keys are exists at start of the file.\n
@@ -356,6 +354,147 @@ class ml:
 
         return 2 * p * r / (p + r)
     
+    class knn:
+        def raw_majority_vote(labels):
+            votes = Counter(labels)
+            winner, _ = votes.most_common(1)[0]
+            return winner
+        
+        def majority_vote(labels):
+            vote_counts = Counter(labels)
+            winner, winner_count = vote_counts.most_common(1)[0]
+            num_winners = len([count for count in vote_counts.values() if count == winner_count])
+
+            if num_winners == 1:
+                return winner
+            else:
+                return ml.knn.majority_vote(labels[:-1])
+
+        def knn_classify(k, labelled_points, new_point):
+            """each labeled point should be a pair (point, label)"""
+            def distance(point):
+                try:
+                    return euclidean(parser.parse_vector2float(point[0]), parser.parse_vector2float(new_point))
+                except:
+                    print('Float parsing error!')
+                
+            by_distance = sorted(labelled_points, key=distance)
+
+            k_nearest_labels = [label for _, label in by_distance[:k]]
+
+            return ml.knn.majority_vote(k_nearest_labels)
+
+    class NaiveBayesClassifier:
+        def __init__(self, k=0.5):
+            self.k = k
+            self.word_probs = []
+
+        def tokenize(self, message: str):
+            import re
+            message = message.lower()
+            all_words = re.findall("[a-z0-9]+", message)
+            return set(all_words)
+
+        def spam_ham_count_from_data(self, data):
+            """returns spam_count, ham_count from given data"""
+            spam_count = ham_count = 0
+            for _, label in data:
+                if label == 'spam':
+                    spam_count += 1
+                else:
+                    ham_count += 1
+
+            return spam_count, ham_count
+
+        def count_words(self, training_set):
+            from collections import defaultdict
+            """training set consists of pairs (message, is_spam)"""
+            counts = defaultdict(lambda: [0, 0])
+            
+            for message, is_spam in training_set:
+                tokenized = self.tokenize(message)
+                for word in tokenized:
+                    counts[word][0 if is_spam == 'spam' else 1] += 1
+            return counts
+
+        def word_probabilities(self, counts, total_spams, total_non_spams, k=0.5):
+            """turn the word_counts into a list of triplets w, p(w | spam) and p(w | ~spam) """
+            return [(w,
+                    (spam + k) / (total_spams + 2 * k),
+                    (non_spam + k) / (total_non_spams + 2 * k))
+                    for w, (spam, non_spam) in counts.items()]
+
+        def spam_probability(self, word_probs, message):
+            from math import log, exp
+            message_words = self.tokenize(message)
+            log_prob_spam = log_prob_nospam = 0.0
+
+            for word, prob_spam, prob_nospam in word_probs:
+                if word in message_words:
+                    log_prob_spam += log(prob_spam)
+                    log_prob_nospam += log(prob_nospam)
+                    # print(word, prob_spam, prob_nospam)
+                else:
+                    log_prob_spam += log(1.0 - prob_spam)
+                    log_prob_nospam += log(1.0 - prob_nospam)
+
+                prob_spam = exp(log_prob_spam)
+                prob_nospam = exp(log_prob_nospam)
+
+            # print(prob_spam, prob_nospam)
+            predicted = 0.0
+            try:
+                predicted = prob_spam / (prob_spam + prob_nospam)
+            except:
+                pass
+            return predicted
+
+        def train(self, training_data):
+            num_spams, num_hams = self.spam_ham_count_from_data(training_data)
+            
+            word_counts = self.count_words(training_data)
+
+            self.word_probs = self.word_probabilities(word_counts, num_spams, num_hams, self.k)
+
+        def classify(self, message, treshold=None):
+            """if treshold is given returns True-False, if treshold is not given returns probability of being spam"""
+            if treshold:
+                return "spam" if self.spam_probability(self.word_probs, message) >= treshold else "ham"
+            else:
+                return self.spam_probability(self.word_probs, message)
+        
+        def test(self, test_data, treshold=0.5):
+            """returns (true_positive_count, false_positive_count, true_negative_count, false_negative_count)"""
+            classified = [self.classify(test_i_message, treshold) for test_i_message, _ in test_data]
+
+            tp_counter = 0
+            tn_counter = 0
+            fp_counter = 0
+            fn_counter = 0
+
+            for i in range(len(test_data)):
+                if test_data[i][1] == "spam":
+                    if test_data[i][1] == classified[i]:
+                        tp_counter += 1
+                    else:
+                        fn_counter += 1
+                elif test_data[i][1] == "ham":
+                    if test_data[i][1] == classified[i]:
+                        tn_counter += 1
+                    else:
+                        fp_counter += 1
+            
+            return tp_counter, fp_counter, tn_counter, fn_counter
+                    
+
+
+
+                
+            
+
+
+    
+
 
 
     
