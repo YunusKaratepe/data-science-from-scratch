@@ -383,6 +383,13 @@ class random:
         x_test, y_test = zip(*test)
         return x_train, x_test, y_train, y_test
 
+    def sample(data, num_samples=None, replace=True):
+        return r.choice(data, size=num_samples, replace=replace)
+
+    def rand_index(max_number):
+        """returns a number between [0, max_number)"""
+        return r.randint(low=0, high=max_number)
+
 class ml:
 
     def accuracy(tp, fp, fn, tn):
