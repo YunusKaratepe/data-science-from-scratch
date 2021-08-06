@@ -2,8 +2,9 @@
 # This file includes some functions to use in the future. 
 # Basiclly this file is a library.
 from collections import Counter
-from math import sqrt
+from math import sqrt, erf
 from functools import partial
+from matplotlib.pyplot import xlim
 from numpy.lib.function_base import copy
 import csv
 
@@ -54,6 +55,8 @@ def data_range(array):
 def sum_of_squares(array):
     return sum([xi ** 2 for xi in array])
 
+def total_sum_of_squares(y):
+    return sum(v ** 2 for v in de_mean(y))
 
 def de_mean(array):
     mean_of_array = mean(array)
@@ -262,7 +265,7 @@ def rescale(data_matrix):
 
     def rescaled(i, j):
         if stdevs[j] > 0:
-            return (data_matrix[i][j] - means[j] / stdevs[j])
+            return (data_matrix[i][j] - means[j]) / stdevs[j]
         else:
             return data_matrix[i][j]
 
@@ -389,6 +392,9 @@ class random:
     def rand_index(max_number):
         """returns a number between [0, max_number)"""
         return r.randint(low=0, high=max_number)
+
+    def normal_cdf(x, mu=0, sigma=1):
+        return (1 + erf((x - mu) / sqrt(2) / sigma)) / 2
 
 class ml:
 
@@ -542,7 +548,58 @@ class ml:
                         fp_counter += 1
             
             return tp_counter, fp_counter, tn_counter, fn_counter
-                    
+    
+    class MultiLinearRegressionClassifier():
+
+        def __init__(self, alpha=0.001) -> None:
+            self.beta = 0.0
+            self.alpha = alpha
+
+        def predict(self, xi, beta=None):
+            if beta is None:
+                beta = self.beta
+            return dot_product(xi, beta)
+
+        def error(self, xi, yi, beta):
+            return yi - self.predict(xi, beta)
+
+        def squared_error(self, xi, yi, beta):
+            return self.error(xi, yi, beta) ** 2
+
+        def squared_error_gradient(self, xi, yi, beta):
+            return [-2 * xij * self.error(xi, yi, beta) for xij in xi]
+
+        def estimate_beta(self, x, y):
+            beta_initial = [random.random() for _ in x[0]]
+            return minimize_stochastic(self.squared_error,
+                self.squared_error_gradient,
+                x, y,
+                beta_initial,
+                self.alpha
+            )
+
+        def train(self, train_x, train_y):
+            self.beta = self.estimate_beta(train_x, train_y)        
+
+        def test(self, test_features, test_labels, allowed_error=0.25):
+            """if actual + actual * (allowed_error / 2) > predicted > actual - actual * (allowed_error / 2): 
+                correct += 1\n
+                returns correct / total"""
+            correct = 0
+            total = len(test_labels)
+            for feature, label in zip(test_features, test_labels):
+                predicted = self.predict(feature)
+                actual = label
+
+                
+                if actual + actual * allowed_error > predicted > actual - actual * allowed_error:
+                    correct += 1
+                
+            return correct / total
+
+        def r_squared(self, x, y):
+            sum_of_sq_errs = sum(self.error(xi, yi, self.beta) ** 2 for xi, yi in zip(x, y))
+            return 1 - sum_of_sq_errs / total_sum_of_squares(y)
 
 
 
