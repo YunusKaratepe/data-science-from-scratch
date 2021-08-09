@@ -2,9 +2,8 @@
 # This file includes some functions to use in the future. 
 # Basiclly this file is a library.
 from collections import Counter
-from math import sqrt, erf
+from math import sqrt, erf, log, exp
 from functools import partial
-from matplotlib.pyplot import xlim
 from numpy.lib.function_base import copy
 import csv
 
@@ -600,6 +599,66 @@ class ml:
         def r_squared(self, x, y):
             sum_of_sq_errs = sum(self.error(xi, yi, self.beta) ** 2 for xi, yi in zip(x, y))
             return 1 - sum_of_sq_errs / total_sum_of_squares(y)
+
+    class LogisticRegressionClassifier():
+
+        def __init__(self):
+            pass
+
+        def logistic(self, x):
+            return 1.0 / (1 + exp(-x))
+                
+
+        def logistic_prime(self, x):
+            return self.logistic(x) * (1 - self.logistic(x))
+
+        def logistic_log_likelihood_i(self, xi, yi, beta):
+            if yi == 1:
+                return log(self.logistic(dot_product(xi, beta)))
+            else:
+                return log(1.0 - self.logistic(dot_product(xi, beta)))
+                
+
+        def logistic_log_likelihood(self, x, y, beta):
+            return sum([self.logistic_log_likelihood_i(xi, yi, beta) for xi, yi in zip(x, y)])
+
+        def logistic_log_partial_ij(self, xi, yi, beta, j):
+            return (yi - self.logistic(dot_product(xi, beta))) * xi[j]
+
+        def logistic_log_gradient_i(self, xi, yi, beta):
+            return [self.logistic_log_partial_ij(xi, yi, beta, j) for j in range(len(beta))]
+
+        def logistic_log_gradient(self, x, y, beta):
+            return [self.logistic_log_gradient_i(xi, yi, beta) for xi, yi in zip(x, y)]
+
+        def predict(self, xi):
+            return self.logistic(dot_product(self.beta_hat, xi))
+
+        def test(self, x, y, treshold=0.5):
+            """returns (tp, fp, fn, tn)"""
+            tp = fp = tn = fn = 0
+            for xi, yi in zip(x, y):
+                predicted = self.predict(xi)
+
+                if yi == 1:
+                    if predicted >= treshold:
+                        tp += 1
+                    else:
+                        fn += 1
+                else:
+                    if predicted >= treshold:
+                        fp += 1
+                    else:
+                        tn += 1
+            
+            return tp, fp, fn, tn
+
+        def train(self, train_features, train_labels):
+            beta_0 = [random.random() for _ in range(len(train_features[0]))]
+
+            self.beta_hat = maximize_stochastic(
+                self.logistic_log_likelihood_i, self.logistic_log_gradient_i, 
+                train_features, train_labels, beta_0)
 
 
 
