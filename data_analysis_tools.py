@@ -1,7 +1,7 @@
 # Author: Yunus Karatepe
 # This file includes some functions to use in the future. 
 # Basiclly this file is a library.
-from collections import Counter
+from collections import Counter, defaultdict
 from math import sqrt, erf, log, exp
 from functools import partial
 from numpy.lib.function_base import copy
@@ -152,6 +152,10 @@ def sum_of_squares(v):
 def scalar_multiply(skalar, vector):
     return [skalar * vi for vi in vector]
 
+def squared_distance(v, w):
+    """(v_1 - w_1) ** 2 + ... + (v_n - w_n) ** 2"""
+    return sum_of_squares(vector_substract(v, w))
+
 
 
 # ---- GRADIEND DESCENT FUNCTIONS ---- #
@@ -204,7 +208,7 @@ def negate(f):
     return lambda *args, **kwargs: -f(*args, **kwargs)
 
 def negate_all(f):
-    return lambda *args, **kwargs: [-y for y in f(*args, **kwargs)] 
+    return lambda *args, **kwargs: [-y for y in f(*args, **kwargs)]
 
 def maximize_batch(target_fn, gradient_fn, theta_0, tolerance=0.000001):
     return minimize_batch(negate(target_fn),
@@ -314,7 +318,7 @@ def principal_component_analysis(x, num_components=3):
     return components
 
 class file_ops:
-            
+
     def read_csv(file_path, sep=',', keys=None, as_array=False):
         """Keys must be given as ordered as in file,
         if keys=None then it assumes keys are exists at start of the file.\n
@@ -341,7 +345,7 @@ class file_ops:
             return data
 
 
-            
+
 class parser:
     def parse_vector2float(vector):
         """returns list of values which are parsed to float"""
@@ -363,7 +367,7 @@ class random:
         return r.normal(mean, st_dev, size)
 
     def shuffle(data):
-        """returns a shuffled copy of given data"""            
+        """returns a shuffled copy of given data"""
         new_data = copy(list(data))
         r.shuffle(new_data)
         return new_data
@@ -415,13 +419,13 @@ class ml:
             return
 
         return 2 * p * r / (p + r)
-    
+
     class knn:
         def raw_majority_vote(labels):
             votes = Counter(labels)
             winner, _ = votes.most_common(1)[0]
             return winner
-        
+
         def majority_vote(labels):
             vote_counts = Counter(labels)
             winner, winner_count = vote_counts.most_common(1)[0]
@@ -439,7 +443,7 @@ class ml:
                     return euclidean(parser.parse_vector2float(point[0]), parser.parse_vector2float(new_point))
                 except:
                     print('Float parsing error!')
-                
+
             by_distance = sorted(labelled_points, key=distance)
 
             k_nearest_labels = [label for _, label in by_distance[:k]]
@@ -472,7 +476,7 @@ class ml:
             from collections import defaultdict
             """training set consists of pairs (message, is_spam)"""
             counts = defaultdict(lambda: [0, 0])
-            
+
             for message, is_spam in training_set:
                 tokenized = self.tokenize(message)
                 for word in tokenized:
@@ -513,7 +517,7 @@ class ml:
 
         def train(self, training_data):
             num_spams, num_hams = self.spam_ham_count_from_data(training_data)
-            
+
             word_counts = self.count_words(training_data)
 
             self.word_probs = self.word_probabilities(word_counts, num_spams, num_hams, self.k)
@@ -524,7 +528,7 @@ class ml:
                 return "spam" if self.spam_probability(self.word_probs, message) >= treshold else "ham"
             else:
                 return self.spam_probability(self.word_probs, message)
-        
+
         def test(self, test_data, treshold=0.5):
             """returns (true_positive_count, false_positive_count, true_negative_count, false_negative_count)"""
             classified = [self.classify(test_i_message, treshold) for test_i_message, _ in test_data]
@@ -545,9 +549,9 @@ class ml:
                         tn_counter += 1
                     else:
                         fp_counter += 1
-            
+
             return tp_counter, fp_counter, tn_counter, fn_counter
-    
+
     class MultiLinearRegressionClassifier():
 
         def __init__(self, alpha=0.001) -> None:
@@ -578,7 +582,7 @@ class ml:
             )
 
         def train(self, train_x, train_y):
-            self.beta = self.estimate_beta(train_x, train_y)        
+            self.beta = self.estimate_beta(train_x, train_y)
 
         def test(self, test_features, test_labels, allowed_error=0.25):
             """if actual + actual * (allowed_error / 2) > predicted > actual - actual * (allowed_error / 2): 
@@ -590,10 +594,10 @@ class ml:
                 predicted = self.predict(feature)
                 actual = label
 
-                
+
                 if actual + actual * allowed_error > predicted > actual - actual * allowed_error:
                     correct += 1
-                
+
             return correct / total
 
         def r_squared(self, x, y):
@@ -607,7 +611,7 @@ class ml:
 
         def logistic(self, x):
             return 1.0 / (1 + exp(-x))
-                
+
 
         def logistic_prime(self, x):
             return self.logistic(x) * (1 - self.logistic(x))
@@ -617,7 +621,7 @@ class ml:
                 return log(self.logistic(dot_product(xi, beta)))
             else:
                 return log(1.0 - self.logistic(dot_product(xi, beta)))
-                
+
 
         def logistic_log_likelihood(self, x, y, beta):
             return sum([self.logistic_log_likelihood_i(xi, yi, beta) for xi, yi in zip(x, y)])
@@ -650,29 +654,220 @@ class ml:
                         fp += 1
                     else:
                         tn += 1
-            
+
             return tp, fp, fn, tn
 
         def train(self, train_features, train_labels):
             beta_0 = [random.random() for _ in range(len(train_features[0]))]
 
             self.beta_hat = maximize_stochastic(
-                self.logistic_log_likelihood_i, self.logistic_log_gradient_i, 
+                self.logistic_log_likelihood_i, self.logistic_log_gradient_i,
                 train_features, train_labels, beta_0)
 
+    class DecisionTreeClassifier:
+
+        def entropy(self, class_probabilities):
+            return sum([-p * log(p, 2) for p in class_probabilities if p != 0])
+
+        def class_probabilities(self, labels):
+            total = len(labels)
+            return [count / total for count in Counter(labels).values()]
+
+        def data_entropy(self, labeled_data):
+            labels = [label for _, label in labeled_data]
+            class_probs = self.class_probabilities(labels)
+            return self.entropy(class_probs)
+
+        def partition_entropy(self, subsets):
+            total_count = sum([len(subset) for subset in subsets])
+            return sum([self.data_entropy(subset) * len(subset) / total_count
+                for subset in subsets])
+
+        def partition_by(self, inputs, attribute):
+            groups = defaultdict(list)
+            for input in inputs:
+                key = input[0][attribute]
+                groups[key].append(input)
+            return groups
+
+        def partition_entropy_by(self, inputs, attribute):
+            partitions = self.partition_by(inputs, attribute)
+
+            return self.partition_entropy(partitions.values())
+
+        def __classify__(self, tree, input):
+            """Classify the input using the decision tree."""
+            if tree in [True, False]:
+                return tree
+
+            attribute, subtree_dict = tree
+
+            subtree_key = input.get(attribute)
+
+            if subtree_key not in subtree_dict:
+                subtree_key = None
+
+            subtree = subtree_dict[subtree_key]
+            return self.__classify__(subtree, input)
+
+        def classify(self, input):
+            return self.__classify__(self.tree, input)
+
+        def build_tree_id3(self, inputs, split_candidates=None):
+            # if this is our first pass,
+            # all keys of the first input are split candidates
+            if split_candidates is None:
+                split_candidates = inputs[0][0].keys()
+
+            # count Trues and Falses in the inputs
+            num_inputs = len(inputs)
+            num_trues = len([label for _, label in inputs if label])
+            num_falses = num_inputs - num_trues
+
+            if num_trues == 0: return False
+            if num_falses == 0: return True
+
+            # otherwise, split on the best attribute
+            if not split_candidates:
+                return num_trues >= num_falses
+
+            best_attribute = min(split_candidates, key=partial(self.partition_entropy_by, inputs))
+            partitions = self.partition_by(inputs, best_attribute)
+            new_candidates = [a for a in split_candidates if a != best_attribute]
+
+            # recursively build subtrees
+            subtrees = {attribute_value: self.build_tree_id3(subset, new_candidates)
+                        for attribute_value, subset in partitions.items()}
+
+            subtrees[None] = num_trues > num_falses # default case
+
+            return (best_attribute, subtrees)
+
+        def train(self, inputs):
+            self.tree = self.build_tree_id3(inputs)
+
+    class PerceptronClassifier:
+
+        def __init__(self, input_size, number_of_hidden_layers, output_size):
+            self.network = [
+                [[random.random() for _ in range(input_size + 1)] for _ in range(number_of_hidden_layers)],
+                [[random.random() for _ in range(number_of_hidden_layers + 1)] for _ in range(output_size)]
+            ]
+            self.targets = [[1.0 if i == j else 0.0 for i in range(output_size)]
+                for j in range(output_size)]
+
+        def sigmoid(self, t):
+            return 1 / (1 + exp(-t))
+
+        def neuron_output(self, weights, inputs):
+            neuron_value = dot_product(weights, inputs)
+            return self.sigmoid(neuron_value)
+
+        def feed_forward(self, input_vector):
+            """takes in a network (represented as a list of lists of lists of weights)
+            and returns the output from forward-propagating the input"""
+
+            outputs = []
+
+            for layer in self.network:
+                input_with_bias = input_vector + [1]
+                output = [self.neuron_output(neuron, input_with_bias) for neuron in layer]
+                outputs.append(output)
+
+                input_vector = output # output of this layer is input for next layer
+
+            return outputs
+
+        def backpropagate(self, input_vector, target_vector):
+
+            hidden_outputs, outputs = self.feed_forward(input_vector)
+
+            # the output * (1 - output) is from the derivative of sigmoid
+            output_deltas = [output * (1 - output) * (output - target) for output, target in zip(outputs, target_vector)]
+
+            # adjust weights for output layer, one neuron at a time
+            for i, output_neuron in enumerate(self.network[-1]): # network[-1] is the output layer
+                # focus on the ith output layer neuron
+                for j, hidden_output in enumerate(hidden_outputs + [1]):
+                    # adjust the jth weight based on both
+                    # this neuron's delta and its jth input
+                    output_neuron[j] -= output_deltas[i] * hidden_output
+
+            # back-propagate errors to hidden layer
+            hidden_deltas = [hidden_output * (1 - hidden_output) * dot_product(output_deltas, [n[i] for n in self.network[-1]])
+                for i, hidden_output in enumerate(hidden_outputs)]
+
+            for i, hidden_neuron in enumerate(self.network[0]):
+                for j, input in enumerate(input_vector + [1]):
+                    hidden_neuron[j] -= hidden_deltas[i] * input
+
+        def train(self, train_data, number_of_epochs=30000):
+            for _ in range(number_of_epochs):
+                for input_vector, target_vector in zip(train_data, self.targets):
+                    self.backpropagate(input_vector, target_vector)
+
+        def predict(self, input):
+            """returns (class_number, probabilities)"""
+            res = self.feed_forward(input)[-1]
+            return res.index(max(res)), res
+
+    class KMeans:
+
+        def __init__(self, k):
+            self.k = k
+            self.means = None
+
+        def classify(self, input):
+            """return the index of the cluster closest to the input"""
+            return min(range(self.k), key=lambda i: squared_distance(input, self.means[i]))
+
+        def train(self, inputs):
+            # choose k random points as the initial means
+            self.means = random.sample(inputs, self.k, replace=False)
+            assignments = None
+
+            while True:
+                # Find new assignments
+                new_assignments = map(self.classify, inputs)
+
+                # if no assignments have changed, we're done
+                if assignments == new_assignments:
+                    return
+                # otherwise keep new assignments.
+
+                # compute new means based on the new assignments.
+                assignments = new_assignments
+                for i in range(self.k):
+                    # find all the points assigned to cluster i
+                    i_points = [p for p, a in zip(inputs, assignments) if a == i]
+
+                    # make sure i_points is not empty so don't divide by 0
+                    if len(i_points) > 0:
+                        self.means[i] = mean(i_points)
 
 
-                
-            
-
-
-    
 
 
 
-    
 
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
