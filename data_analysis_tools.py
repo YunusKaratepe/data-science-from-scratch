@@ -114,6 +114,10 @@ def vector_sum(vectors):
         result = vector_add(result, vector)
     return result
 
+def vector_mean(vectors):
+    n = len(vectors)
+    return scalar_multiply(1 / n, vector_sum(vectors))
+
 
 def dot_product(x, y):
     return sum([xi * yi for xi, yi in zip(x, y)])
@@ -823,15 +827,23 @@ class ml:
 
         def train(self, inputs):
             # choose k random points as the initial means
-            self.means = random.sample(inputs, self.k, replace=False)
+            self.means = []
+            selected_indexes = []
+            for _ in range(self.k):
+                random_index = random.rand_index(len(inputs))
+                while random_index in selected_indexes:
+                    random_index = random.rand_index(len(inputs))
+                self.means.append(inputs[random_index])
+                selected_indexes.append(random_index)
+                
             assignments = None
 
             while True:
                 # Find new assignments
-                new_assignments = map(self.classify, inputs)
+                new_assignments = list(map(self.classify, inputs))
 
                 # if no assignments have changed, we're done
-                if assignments == new_assignments:
+                if assignments and squared_distance(assignments, new_assignments) == 0:
                     return
                 # otherwise keep new assignments.
 
@@ -843,7 +855,7 @@ class ml:
 
                     # make sure i_points is not empty so don't divide by 0
                     if len(i_points) > 0:
-                        self.means[i] = mean(i_points)
+                        self.means[i] = vector_mean(i_points)
 
 
 
