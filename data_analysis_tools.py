@@ -321,6 +321,34 @@ def principal_component_analysis(x, num_components=3):
 
     return components
 
+def matrix_product_entry(A, B, i, j):
+    return dot_product(A[i], get_column(B, j))
+
+
+def matrix_multiply(A, B):
+    n1, k1 = len(A), len(A[0])
+    n2, k2 = len(B), len(B[0])
+
+    if k1 != n2:
+        raise ArithmeticError('incompatible shapes!')
+    else:
+        return make_matrix(n1, k2, partial(matrix_product_entry, A, B))
+
+def vector_to_matrix(v):
+    """converts list to nx1 matrix"""
+    return [[vi] for vi in v]
+
+def vector_from_matrix(mat):
+    """converts nx1 matrix to list"""
+    return [row[0] for row in mat]
+
+def cosine_similarity(v, w):
+    """this basically measures the angle between v and w"""
+    return dot_product / sqrt(dot_product(v, v) * dot_product(w, w))
+
+def transpose_matrix(A):
+    return [get_column(A, i) for i in range(len(A[0]))]
+
 class file_ops:
 
     def read_csv(file_path, sep=',', keys=None, as_array=False):
@@ -402,6 +430,8 @@ class random:
 
     def normal_cdf(x, mu=0, sigma=1):
         return (1 + erf((x - mu) / sqrt(2) / sigma)) / 2
+
+
 
 class ml:
 
