@@ -4,7 +4,7 @@
 from collections import Counter, defaultdict
 from math import sqrt, erf, log, exp
 from functools import partial
-from numpy.lib.function_base import copy
+from numpy.lib.function_base import append, copy
 import csv
 
 import numpy.random as r
@@ -942,6 +942,68 @@ class Table:
         limit_table = Table(self.columns)
         limit_table.rows = self.rows[:num_rows]
         return limit_table
+
+    def group_by(self, group_by_columns, aggregates, having=None):
+        grouped_rows = defaultdict(list)
+
+        # populate groups
+        for row in self.rows:
+            key = tuple(row[column] for column in group_by_columns)
+            grouped_rows[key].append(row)
+
+        # result table consists of group by columns and aggregates
+
+        result_table = Table(group_by_columns + list(aggregates.keys()))
+
+        for key, rows in grouped_rows.items():
+            if having is None or having(rows):
+                new_row = list(key)
+                for _, aggregate_fn in aggregates.items():
+                    new_row.append(aggregate_fn(rows))
+                result_table.insert(new_row)
+
+        return result_table
+
+    def order_by(self, order):
+        new_table = self.select()
+        new_table.rows.sort(key=order)
+        return new_table
+
+    def join(self, other_table, left_join=False):
+
+        join_on_columns = [c for c in self.columns if c in other_table.columns] # columns in both tables
+
+        additional_columns = [c for c in other_table.columns if c not in join_on_columns] # columns only in right table
+
+        # all columns from left table + additional_columns from right table
+
+        join_table = Table(self.columns + additional_columns)
+
+        
+        # all columns from left table + additional_columns from right table
+        for row in self.rows:
+            def is_join(other_row):
+                return all(other_row[c] == row[c] for c in join_on_columns)
+
+            other_rows = other_table.where(is_join).rows
+
+            # each other row that matches this one produces a result row
+            for other_row in other_rows:
+                join_table.insert(
+                    [row[c] for c in self.columns] + 
+                    [other_row[c] for c in additional_columns]
+                )
+            # if no rows match and it's a left join, output with Nones
+            if left_join and not other_rows:
+                join_table.insert(
+                    [row[c] for c in self.columns] + 
+                    [None for _ in additional_columns]
+                )
+        return join_table
+
+            
+
+
 
     
     
